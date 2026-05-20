@@ -61,10 +61,13 @@ ORDER BY raw_Percentage DESC;
 
 -- 3. 
 --     a. Which drug (generic_name) had the highest total drug cost?
-SELECT prescription.drug_name, drug.generic_name, prescription.total_drug_cost 
-FROM drug 
-	INNER JOIN prescription ON drug.drug_name = prescription.drug_name 
-ORDER BY total_drug_cost DESC;
+SELECT generic_name, SUM(total_drug_cost) as total_cost
+FROM 
+	drug 
+		INNER JOIN prescription ON drug.drug_name = prescription.drug_name 
+GROUP BY generic_name
+ORDER BY total_cost DESC
+LIMIT 1;
 
 
 
@@ -94,7 +97,7 @@ SELECT
 	CASE
 		WHEN opioid_drug_flag = 'Y' THEN 'opioid'
 		WHEN antibiotic_drug_flag = 'Y' THEN 'antibiotic'
-	ELSE 'neither'
+		ELSE 'neither'
 	END AS drug_type, TO_CHAR(SUM(prescription.total_drug_cost), 'FM$999,999,999,999.00') as total_cost
 FROM drug
 INNER JOIN prescription ON drug.drug_name = prescription.drug_name
@@ -110,18 +113,19 @@ INNER JOIN prescription ON drug.drug_name = prescription.drug_name
 -- 5. 
 --     a. How many CBSAs are in Tennessee? **Warning:** The cbsa table contains information for all states, not just Tennessee.
 
-SELECT COUNT(state)
+SELECT COUNT(DISTINCT cbsa)
 FROM cbsa
 INNER JOIN fips_county ON cbsa.fipscounty = fips_county.fipscounty
 WHERE state = 'TN'
 
 --     b. Which cbsa has the largest combined population? Which has the smallest? Report the CBSA name and total population.
 
-SELECT cbsa, SUM(population) AS total_population
+SELECT cbsaname, SUM(population) AS total_population
 FROM cbsa
 	INNER JOIN fips_county ON cbsa.fipscounty = fips_county.fipscounty
 	INNER JOIN population ON fips_county.fipscounty = population.fipscounty
-GROUP BY cbsa;
+GROUP BY cbsaname
+ORDER BY total_population DESC
 --     c. What is the largest (in terms of population) county which is not included in a CBSA? Report the county name and population.
 
 SELECT county, SUM(population) AS county_sum_pop
@@ -157,6 +161,14 @@ FROM prescription
 	INNER JOIN drug ON prescription.drug_name = drug.drug_name
 	INNER JOIN prescriber ON prescription.npi = prescriber.npi
 WHERE total_claim_count >= 3000;
+------------------------------------
+
+
+SELECT SUM(total_claim_count)
+FROM prescription
+	INNER JOIN drug ON prescription.drug_name = drug.drug_name
+	INNER JOIN prescriber ON prescription.npi = prescriber.npi
+WHERE nppes_provider_first_name ILIKE 'DAVID' AND nppes_provider_last_org_name ILIKE 'COFFEY' AND opioid_drug_flag ILIKE 'Y';
 
 -- 7. The goal of this exercise is to generate a full list of all pain management specialists in Nashville and the number of claims they had for each opioid. **Hint:** The results from all 3 parts will have 637 rows.
 
